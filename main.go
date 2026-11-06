@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"math"
+	"math/rand"
+	"sync"
+	"time"
 )
 
 const (
@@ -9,32 +13,67 @@ const (
 	CHUNKS = 8
 )
 
-// generateRandomElements generates random elements.
 func generateRandomElements(size int) []int {
-	// ваш код здесь
+	if size <= 0 {
+		return []int{}
+	}
+	data := make([]int, size)
+	for i := range data {
+		data[i] = rand.Intn(math.MaxInt) + 1
+	}
+	return data
 }
 
-// maximum returns the maximum number of elements.
 func maximum(data []int) int {
-	// ваш код здесь
+	if len(data) == 0 {
+		return 0
+	}
+	largest := data[0]
+	for _, value := range data[1:] {
+		if value > largest {
+			largest = value
+		}
+	}
+	return largest
 }
 
-// maxChunks returns the maximum number of elements in a chunks.
 func maxChunks(data []int) int {
-	// ваш код здесь
+	if len(data) == 0 {
+		return 0
+	}
+	chunks := min(CHUNKS, len(data))
+	chunkSize := len(data) / chunks
+	maxima := make([]int, chunks)
+	var wg sync.WaitGroup
+	wg.Add(chunks)
+	for i := 0; i < chunks; i++ {
+		start := i * chunkSize
+		end := start + chunkSize
+		if i == chunks-1 {
+			end = len(data)
+		}
+		go func(index int, chunk []int) {
+			defer wg.Done()
+			maxima[index] = maximum(chunk)
+		}(i, data[start:end])
+	}
+	wg.Wait()
+	return maximum(maxima)
 }
 
 func main() {
-	fmt.Printf("Генерируем %d целых чисел", SIZE)
-	// ваш код здесь
+	fmt.Printf("Генерируем %d целых чисел\n", SIZE)
+	data := generateRandomElements(SIZE)
 
 	fmt.Println("Ищем максимальное значение в один поток")
-	// ваш код здесь
+	start := time.Now()
+	largest := maximum(data)
+	elapsed := time.Since(start).Microseconds()
+	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d мкс\n", largest, elapsed)
 
-	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
-
-	fmt.Printf("Ищем максимальное значение в %d потоков", CHUNKS)
-	// ваш код здесь
-
-	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d ms\n", max, elapsed)
+	fmt.Printf("Ищем максимальное значение в %d горутинах\n", CHUNKS)
+	start = time.Now()
+	largest = maxChunks(data)
+	elapsed = time.Since(start).Microseconds()
+	fmt.Printf("Максимальное значение элемента: %d\nВремя поиска: %d мкс\n", largest, elapsed)
 }
